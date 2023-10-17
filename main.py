@@ -7,15 +7,20 @@ def index():
     return render_template('index.html', title='')
 
 # admin login
-@app.route('/admin')
+@app.route('/admin/')
 def adminIndex():
     return render_template('admin/index.html', title='Admin Login')
 
 # ******************user area***********************
 # user login
-@app.route('/user')
+@app.route('/user/')
 def userIndex():
     return render_template('user/index.html', title='User Login')
+
+# user register
+@app.route('/user/signup')
+def userSignup():
+    return render_template('user/signup.html', title='User Signup')
 
 
 
