@@ -1,8 +1,14 @@
-from flask import Flask, render_template,flash,request,redirect
+from flask import Flask, render_template,flash,request,redirect,session
+from flask_sqlalchemy import SQLAlchemy
+# from flask_session import Session
+from flask_bcrypt import Bcrypt
 app = Flask(__name__)
-config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///ms.sdlite"
-app.config["SECRET_KEY"] = "my_secret_key"
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///ms.sqlite"
+app.config["SECRET_KEY"] = '9d0cc71f56e52ed3e6e06824'
 db=SQLAlchemy(app)
+bcrypt=Bcrypt(app)
+
+app.app_context().push()
 
 # User Class
 class User(db.Model):
@@ -10,7 +16,7 @@ class User(db.Model):
     fname=db.Column(db.String(255), nullable=False)
     lname=db.Column(db.String(255), nullable=False)
     email=db.Column(db.String(255), nullable=False)
-    usernames=db.Column(db.String(255), nullable=False)
+    username=db.Column(db.String(255), nullable=False)
     edu=db.Column(db.String(255), nullable=False)
     password=db.Column(db.String(255), nullable=False)
     status=db.Column(db.Integer, default=0, nullable=False)
@@ -18,7 +24,8 @@ class User(db.Model):
     def __repr__(self):
         return f'User("{self.fname}","{self.lname}","{self.email}","{self.username}","{self.edu}","{self.password})'
 
-
+#create table
+# db.create_all()
 
 # main index 
 @app.route('/')
@@ -39,7 +46,7 @@ def userIndex():
 # user register
 @app.route('/user/signup', methods=['POST','GET'])
 def userSignup():
-    if request.methods=='POST':
+    if request.method =='POST':
         #getting all inputs
         fname = request.form.get('fname')
         lname = request.form.get('lname')
@@ -52,7 +59,20 @@ def userSignup():
         if fname=="" or lname=="" or email=="" or username=="" or password=="" or edu=="":
             flash('Please fill all the field','danger')
             return redirect('/user/signup')
-        pass
+        else:
+            is_email = User().query.filter_by(email=email).first()
+            if is_email:
+                flash('Email already Exists','danger')
+                return redirect('/user/signup')
+            else:
+                hash_password=bcrypt.generate_password_hash(password, 10)
+                user=User(fname=fname, lname=lname, email=email, 
+                password=hash_password, edu=edu, username=username)
+                db.session.add(user)
+                db.session.commit()
+
+                flash('Account Created Successfully, Admin will approve your account shortly', 'success')
+                return redirect('/user/dashboard')
     else:
         return render_template('user/signup.html', title='User Signup')
 
