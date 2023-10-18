@@ -115,13 +115,43 @@ def userDashboard():
     # if session.get('username'):
     #     return f"{session.get('username')}"
 
-
+# user logout
 @app.route('/user/logout')
 def userLogout():
+    if not session.get('user_id'):
+        return redirect('/user/')
     if session.get('user_id'):
         session['user_id'] = None
         session['username'] = None
         return redirect('/user/')
+
+#user change password
+
+@app.route('/user/change-password', methods=['POST', 'GET'])
+def userChangepassword():
+    if not session.get('user_id'):
+        return redirect('/user/')
+    if request.method == 'POST':
+        email=request.form.get('email')
+        password=request.form.get('password')
+        if email == "" or password == "":
+            flash("Please fill the field",'danger')
+            return redirect('/user/change-password')
+        else:
+            users=User.query.filter_by(email=email).first()
+            if users:
+                hash_password=bcrypt.generate_password_hash(password,10)
+                User.query.filter_by(email=email).update(dict
+                (password=hash_password))
+                db.session.commit()
+                flash('password change successfully', 'success')
+                return redirect('/user/change-password')
+            else:
+                flash('Invalid Email','danger')
+                return redirect('/user/change-password')
+        pass
+    else:
+        return render_template('user/change-password.html', title='Change Password')
 
 if __name__ == '__main__':
     app.run(debug=True)
