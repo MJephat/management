@@ -1,12 +1,15 @@
 from flask import Flask, render_template,flash,request,redirect,session
 from flask_sqlalchemy import SQLAlchemy
-# from flask_session import Session
+from flask_session import Session
 from flask_bcrypt import Bcrypt
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///ms.sqlite"
 app.config["SECRET_KEY"] = '9d0cc71f56e52ed3e6e06824'
+app.config["SESSION_PARMANENT"]=False
+app.config["SESSION_TYPE"]='filesystem'
 db=SQLAlchemy(app)
 bcrypt=Bcrypt(app)
+Session(app)
 
 app.app_context().push()
 
@@ -19,7 +22,7 @@ class User(db.Model):
     username=db.Column(db.String(255), nullable=False)
     edu=db.Column(db.String(255), nullable=False)
     password=db.Column(db.String(255), nullable=False)
-    status=db.Column(db.Integer, default=0, nullable=False)
+    status=db.Column(db.Integer, default=1, nullable=False)
 
     def __repr__(self):
         return f'User("{self.fname}","{self.lname}","{self.email}","{self.username}","{self.edu}","{self.password})'
@@ -39,13 +42,40 @@ def adminIndex():
 
 # ******************user area***********************
 # user login
-@app.route('/user/')
+@app.route('/user/',methods=["POST","GET"])
 def userIndex():
-    return render_template('user/index.html', title='User Login')
+    if  session.get('user_id'):
+        return redirect('/user/dashboard')
+    if request.method=="POST":
+        # get the name of the field
+        email=request.form.get('email')
+        password=request.form.get('password')
+        # check user exist in this email or not
+        users=User().query.filter_by(email=email).first()
+        if users and bcrypt.check_password_hash(users.password,password):
+            # check the admin approve your account are not
+            is_approve=User.query.filter_by(id=users.id).first()
+            # first return the is_approve:
+            if is_approve.status == 0:
+                flash('Your Account is not approved by Admin','danger')
+                return redirect('/user/')
+            else:
+                session['user_id']=users.id
+                session['username']=users.username
+                flash('Login Successfully','success')
+                return redirect('/user/dashboard')
+        else:
+            flash('Invalid Email and Password','danger')
+            return redirect('/user/')
+    else:
+        return render_template('user/index.html',title="User Login")
 
 # user register
 @app.route('/user/signup', methods=['POST','GET'])
 def userSignup():
+    if not session.get('user_id'):
+        return redirect('/user/dashboard')
+
     if request.method =='POST':
         #getting all inputs
         fname = request.form.get('fname')
@@ -72,12 +102,26 @@ def userSignup():
                 db.session.commit()
 
                 flash('Account Created Successfully, Admin will approve your account shortly', 'success')
-                return redirect('/user/dashboard')
+                return redirect('/user/')
     else:
         return render_template('user/signup.html', title='User Signup')
 
+#user dashboard
+@app.route('/user/dashboard')
+def userDashboard():
+    if not session.get('user_id'):
+        return redirect('/user/')
+    return render_template('user/dashboard.html', title='User Dashboard')
+    # if session.get('username'):
+    #     return f"{session.get('username')}"
 
 
+@app.route('/user/logout')
+def userLogout():
+    if session.get('user_id'):
+        session['user_id'] = None
+        session['username'] = None
+        return redirect('/user/')
 
 if __name__ == '__main__':
     app.run(debug=True)
