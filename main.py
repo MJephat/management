@@ -41,7 +41,6 @@ def adminIndex():
     return render_template('admin/index.html', title='Admin Login')
 
 # ******************user area***********************
-# user login
 @app.route('/user/',methods=["POST","GET"])
 def userIndex():
     if  session.get('user_id'):
@@ -70,88 +69,114 @@ def userIndex():
     else:
         return render_template('user/index.html',title="User Login")
 
-# user register
-@app.route('/user/signup', methods=['POST','GET'])
+# User Register
+@app.route('/user/signup',methods=['POST','GET'])
 def userSignup():
-    if not session.get('user_id'):
+    if  session.get('user_id'):
         return redirect('/user/dashboard')
-
-    if request.method =='POST':
-        #getting all inputs
-        fname = request.form.get('fname')
-        lname = request.form.get('lname')
-        email = request.form.get('email')
-        username = request.form.get('username')
-        edu = request.form.get('edu')
-        password = request.form.get('password')
-
-        # checking if all fields are filled or not.abs
-        if fname=="" or lname=="" or email=="" or username=="" or password=="" or edu=="":
+    if request.method=='POST':
+        # get all input field name
+        fname=request.form.get('fname')
+        lname=request.form.get('lname')
+        email=request.form.get('email')
+        username=request.form.get('username')
+        edu=request.form.get('edu')
+        password=request.form.get('password')
+        # check all the field is filled are not
+        if fname =="" or lname=="" or email=="" or password=="" or username=="" or edu=="":
             flash('Please fill all the field','danger')
             return redirect('/user/signup')
         else:
-            is_email = User().query.filter_by(email=email).first()
+            is_email=User().query.filter_by(email=email).first()
             if is_email:
-                flash('Email already Exists','danger')
+                flash('Email already Exist','danger')
                 return redirect('/user/signup')
             else:
-                hash_password=bcrypt.generate_password_hash(password, 10)
-                user=User(fname=fname, lname=lname, email=email, 
-                password=hash_password, edu=edu, username=username)
+                hash_password=bcrypt.generate_password_hash(password,10)
+                user=User(fname=fname,lname=lname,email=email,password=hash_password,edu=edu,username=username)
                 db.session.add(user)
                 db.session.commit()
-
-                flash('Account Created Successfully, Admin will approve your account shortly', 'success')
+                flash('Account Create Successfully Admin Will approve your account in 10 to 30 mint ','success')
                 return redirect('/user/')
     else:
-        return render_template('user/signup.html', title='User Signup')
+        return render_template('user/signup.html',title="User Signup")
 
-#user dashboard
+
+# user dashboard
 @app.route('/user/dashboard')
 def userDashboard():
     if not session.get('user_id'):
         return redirect('/user/')
-    return render_template('user/dashboard.html', title='User Dashboard')
-    # if session.get('username'):
-    #     return f"{session.get('username')}"
+    if session.get('user_id'):
+        id=session.get('user_id')
+    users=User().query.filter_by(id=id).first()
+    return render_template('user/dashboard.html',title="User Dashboard",users=users)
 
 # user logout
 @app.route('/user/logout')
 def userLogout():
     if not session.get('user_id'):
         return redirect('/user/')
+
     if session.get('user_id'):
         session['user_id'] = None
         session['username'] = None
         return redirect('/user/')
 
-#user change password
-
-@app.route('/user/change-password', methods=['POST', 'GET'])
-def userChangepassword():
+@app.route('/user/change-password',methods=["POST","GET"])
+def userChangePassword():
     if not session.get('user_id'):
         return redirect('/user/')
     if request.method == 'POST':
         email=request.form.get('email')
         password=request.form.get('password')
         if email == "" or password == "":
-            flash("Please fill the field",'danger')
+            flash('Please fill the field','danger')
             return redirect('/user/change-password')
         else:
             users=User.query.filter_by(email=email).first()
             if users:
-                hash_password=bcrypt.generate_password_hash(password,10)
-                User.query.filter_by(email=email).update(dict
-                (password=hash_password))
-                db.session.commit()
-                flash('password change successfully', 'success')
-                return redirect('/user/change-password')
+               hash_password=bcrypt.generate_password_hash(password,10)
+               User.query.filter_by(email=email).update(dict(password=hash_password))
+               db.session.commit()
+               flash('Password Change Successfully','success')
+               return redirect('/user/change-password')
             else:
                 flash('Invalid Email','danger')
                 return redirect('/user/change-password')
-        pass
-    else:
-        return render_template('user/change-password.html', title='Change Password')
 
-if __name__ == '__main__':
+    else:
+        return render_template('user/change-password.html',title="Change Password")
+
+# user update profile
+@app.route('/user/update-profile', methods=["POST","GET"])
+def userUpdateProfile():
+    if not session.get('user_id'):
+        return redirect('/user/')
+    if session.get('user_id'):
+        id=session.get('user_id')
+    users=User.query.get(id)
+    if request.method == 'POST':
+        # get all input field name
+        fname=request.form.get('fname')
+        lname=request.form.get('lname')
+        email=request.form.get('email')
+        username=request.form.get('username')
+        edu=request.form.get('edu')
+        if fname =="" or lname=="" or email=="" or username=="" or edu=="":
+            flash('Please fill all the field','danger')
+            return redirect('/user/update-profile')
+        else:
+            # session['username']=None
+            User.query.filter_by(id=id).update(dict(fname=fname,lname=lname,email=email,edu=edu,username=username))
+            db.session.commit()
+            # session['username']=username
+            flash('Profile update Successfully','success')
+            return redirect('/user/update-profile')
+    else:
+        return render_template('user/update-profile.html',
+        title="Update Profile",users=users)
+
+if __name__=="__main__":
     app.run(debug=True)
+    
