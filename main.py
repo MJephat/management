@@ -111,11 +111,7 @@ def userSignup():
 def userDashboard():
     if not session.get('user_id'):
         return redirect('/user/')
-    if session.get('user_id'):
-        id=session.get('user_id')
-    users=User().query.filter_by(id=id).first()
-    return render_template('user/dashboard.html',
-     title='User Dashboard', users=users)
+    return render_template('user/dashboard.html', title='User Dashboard')
     # if session.get('username'):
     #     return f"{session.get('username')}"
 
@@ -157,33 +153,5 @@ def userChangepassword():
     else:
         return render_template('user/change-password.html', title='Change Password')
 
-#user update profile
-@app.route('/user/update-profile', methods=['POST', 'GET'])
-def userUpdateProfile():
-    if not session.get('user_id'):
-        return redirect('/user')
-    if session.get('user_id'):
-        id=session.get('user_id')
-    users=User.query.get(id)
-    if request.method == 'POST':
-        #get all input field name
-        fname=request.form.get('fname')
-        lname=request.form.get('lname')
-        email=request.form.get('email')
-        username=request.form.get('username')
-        edu=request.form.get('edu')
-        
-        if fname=="" or lname=="" or email=="" or username=="" or edu=="":
-        
-            flash('Please fill all the field', 'danger')
-            return redirect('/user/update-profile')
-        else:
-            User.query.filter_by(id=id).update(dict(fname=fname, lname=lname, email=email,
-            username=username, edu=edu))
-            db.session.commit()
-            flash('Profile updated successifully', 'success')
-            return redirect('/user/update-profile')
-    else:
-        return render_template('user/update-profile.html', title="Update Profile", users=users)
 if __name__ == '__main__':
     app.run(debug=True)
