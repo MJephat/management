@@ -25,20 +25,112 @@ class User(db.Model):
     status=db.Column(db.Integer, default=1, nullable=False)
 
     def __repr__(self):
-        return f'User("{self.fname}","{self.lname}","{self.email}","{self.username}","{self.edu}","{self.password})'
+        return f'User("{self.fname}","{self.lname}","{self.email}","{self.username}","{self.edu}","{self.password}")'
 
-#create table
-# db.create_all()
+#creating admin class
+class Admin(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+
+    def __repr__(self):
+        return f'Admin("{self.username}","{self.id}")'
+# insert admin once
+# admin=Admin(username='martin', password=bcrypt.generate_password_hash('martin123',10))
+# db.session.add(admin)
+# db.session.commit()
 
 # main index 
 @app.route('/')
 def index():
-    return render_template('index.html', title='')
+    return render_template('index.html',title="")
 
-# admin login
-@app.route('/admin/')
+
+# admin loign
+@app.route('/admin/',methods=["POST","GET"])
 def adminIndex():
-    return render_template('admin/index.html', title='Admin Login')
+    # chect the request is post or not
+    if request.method == 'POST':
+        # get the value of field
+        username = request.form.get('username')
+        password = request.form.get('password')
+        # check the value is not empty
+        if username=="" and password=="":
+            flash('Please fill all the field','danger')
+            return redirect('/admin/')
+        else:
+            # login admin by username 
+            admins=Admin().query.filter_by(username=username).first()
+            if admins and bcrypt.check_password_hash(admins.password,password):
+                session['admin_id']=admins.id
+                session['admin_name']=admins.username
+                flash('Login Successfully','success')
+                return redirect('/admin/dashboard')
+            else:
+                flash('Invalid Email and Password','danger')
+                return redirect('/admin/')
+    else:
+        return render_template('admin/index.html',title="Admin Login")
+
+# admin Dashboard
+@app.route('/admin/dashboard')
+def adminDashboard():
+    if not session.get('admin_id'):
+        return redirect('/admin/')
+    totalUser=User.query.count()
+    totalApprove=User.query.filter_by(status=1).count()
+    NotTotalApprove=User.query.filter_by(status=0).count()
+    return render_template('admin/dashboard.html',title="Admin Dashboard",totalUser=totalUser,totalApprove=totalApprove,NotTotalApprove=NotTotalApprove)
+
+# admin get all user 
+@app.route('/admin/get-all-user', methods=["POST","GET"])
+def adminGetAllUser():
+    if not session.get('admin_id'):
+        return redirect('/admin/')
+    if request.method== "POST":
+        search=request.form.get('search')
+        users=User.query.filter(User.username.like('%'+search+'%')).all()
+        return render_template('admin/all-user.html',title='Approve User',users=users)
+    else:
+        users=User.query.all()
+        return render_template('admin/all-user.html',title='Approve User',users=users)
+
+@app.route('/admin/approve-user/<int:id>')
+def adminApprove(id):
+    if not session.get('admin_id'):
+        return redirect('/admin/')
+    User().query.filter_by(id=id).update(dict(status=1))
+    db.session.commit()
+    flash('Approve Successfully','success')
+    return redirect('/admin/get-all-user')
+
+# change admin password
+@app.route('/admin/change-admin-password',methods=["POST","GET"])
+def adminChangePassword():
+    admin=Admin.query.get(1)
+    if request.method == 'POST':
+        username=request.form.get('username')
+        password=request.form.get('password')
+        if username == "" or password=="":
+            flash('Please fill the field','danger')
+            return redirect('/admin/change-admin-password')
+        else:
+            Admin().query.filter_by(username=username).update(dict(password=bcrypt.generate_password_hash(password,10)))
+            db.session.commit()
+            flash('Admin Password update successfully','success')
+            return redirect('/admin/change-admin-password')
+    else:
+        return render_template('admin/admin-change-password.html',title='Admin Change Password',admin=admin)
+
+# admin logout
+@app.route('/admin/logout')
+def adminLogout():
+    if not session.get('admin_id'):
+        return redirect('/admin/')
+    if session.get('admin_id'):
+        session['admin_id']=None
+        session['admin_name']=None
+        return redirect('/')
 
 # ******************user area***********************
 @app.route('/user/',methods=["POST","GET"])
